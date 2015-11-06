@@ -68,6 +68,3 @@
                                               cand-strings))
         sorted (sort-by val > str-score-pairs)]
     (-> sorted first key)))
-
-(find-most-english etaoin-shrdlu)
-;; => "Cooking MC's like a pound of bacon"

@@ -16,4 +16,6 @@
 (deftest challenge-3
   (let [input "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"]
     (is (= "Cooking MC's like a pound of bacon"
-           (mask-xor input (byte 88))))))
+           (mask-xor input (byte 88))))
+    (is (= "Cooking MC's like a pound of bacon"
+           (find-most-english input)))))
