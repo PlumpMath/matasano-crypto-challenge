@@ -49,24 +49,26 @@
                  \o 10466 \n 9413 \s 8154 \l 8114 \c 6968
                  \u 5373 \p 4809 \m 4735 \d 4596 \h 4058
                  \g 3380 \b 3121 \y 2938 \f 2157 \v 1574
-                 \w 1388 \k 1235 \x 507 \z 356 \q 343 \j 220}]
+                 \w 1388 \k 1235 \x 507 \z 356 \q 343 \j 220
+                 \space 6000}]
     (weights c)))
 
 (defn score-text
   "Takes a plaintext string, checks each char against a word frequencies map and
   returns the sum of its char scores."
   [s]
-  (reduce + (replace {nil 0} (map etaoin-score s))))
+  (reduce + (replace {nil -6000} (map etaoin-score s))))
 
 (defn find-most-english
   "Takes an encoded string XOR'd against a single character. Returns decoded
   string among candidates judged most likely to be English by `score-text'."
   [s]
   (let [cand-strings (for [i (range 128)] (mask-xor s (byte i)))
-        str-score-pairs (into {} (map-indexed (fn [i x] [i (score-text x)])
+        str-score-pairs (into {} (map-indexed (fn [_ x] [x (score-text x)])
                                               cand-strings))
         sorted (sort-by val > str-score-pairs)]
-    (mask-xor s (byte (-> sorted first key)))))
+    (-> sorted first key)
+    sorted))
 
 (find-most-english etaoin-shrdlu)
 ;; => "Cooking MC's like a pound of bacon"
