@@ -18,4 +18,4 @@
     (is (= "Cooking MC's like a pound of bacon"
            (mask-xor input (byte 88))))
     (is (= "Cooking MC's like a pound of bacon"
-           (find-most-english input)))))
+           (find-most-english (XOR-permute-strings input))))))

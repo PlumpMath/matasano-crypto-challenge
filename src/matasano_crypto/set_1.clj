@@ -65,12 +65,15 @@
   [s]
   (reduce + (replace {nil -6000} (map etaoin-score s))))
 
-(defn find-most-english
-  "Takes an encoded string XOR'd against a single character. Returns decoded
-  string among candidates judged most likely to be English by `score-text'."
+(defn XOR-permute-strings
+  "Takes an encoded string XOR'd against a single character. Returns all
+  permutations of this string XOR'd against a single byte."
   [s]
-  (let [cand-strings (for [i (range 128)] (mask-xor s (byte i)))
-        str-score-pairs (into {} (map-indexed (fn [_ x] [x (score-text x)])
-                                              cand-strings))
+  (for [i (range 128)] (mask-xor s (byte i))))
+
+(defn find-most-english
+  "Takes a list of strings and returns the most English of them all."
+  [v]
+  (let [str-score-pairs (into {} (map-indexed (fn [_ x] [x (score-text x)]) v))
         sorted (sort-by val > str-score-pairs)]
     (-> sorted first key)))
