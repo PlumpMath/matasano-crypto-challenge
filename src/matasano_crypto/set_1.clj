@@ -1,6 +1,8 @@
 (ns matasano-crypto.set-1
-  (:import [org.apache.shiro.codec Base64 CodecSupport Hex]))
+  (:import [org.apache.shiro.codec Base64 CodecSupport Hex])
+  (:require [clojure.string :as str]))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Challenge 1: hex to base64
 
 (defn hex->base64 [s]
@@ -11,6 +13,8 @@
   (let [raw (Base64/decode s)]
     (Hex/encodeToString raw)))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Challenge 2: Fixed XOR
 
 (defn inplace-xor [^bytes a ^bytes b ^bytes out]
@@ -28,6 +32,8 @@
 (CodecSupport/toString (Hex/decode "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d"))
 ;; => "I'm killing your brain like a poisonous mushroom"
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Challenge 3: Single-byte XOR cipher
 
 (def etaoin-shrdlu "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")
