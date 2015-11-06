@@ -67,8 +67,7 @@
         str-score-pairs (into {} (map-indexed (fn [_ x] [x (score-text x)])
                                               cand-strings))
         sorted (sort-by val > str-score-pairs)]
-    (-> sorted first key)
-    sorted))
+    (-> sorted first key)))
 
 (find-most-english etaoin-shrdlu)
 ;; => "Cooking MC's like a pound of bacon"
