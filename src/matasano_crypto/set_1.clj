@@ -78,15 +78,19 @@
 
 ;; Challenge 4: Detect single-character XOR
 
-(def c4-data
+(defn import-lines-of-txt
+  [filepath]
   (read-string
-   (-> (slurp "resources/4.txt")
+   (-> (slurp filepath)
        (str/trim-newline) ;; don't want final \n to be surrounded by \"
        (str/replace #"\n" "\"\n \"")
        (str/join ["[\"" "\"]"]))))
 
+(def c4-data (import-lines-of-txt "resources/4.txt"))
+
 #_(find-most-english
    (map (comp find-most-english xor-permute-strings) c4-data))
+
 
 ;; Challenge 5: Repeating-key XOR
 
