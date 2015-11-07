@@ -17,15 +17,14 @@
   (let [input "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"]
     (is (= (single-byte-xor input (byte 88))
            "Cooking MC's like a pound of bacon"))
-    (is (= (find-most-english (xor-permute-strings input))
+    (is (= (most-englishest (xor-permute-strings input))
            "Cooking MC's like a pound of bacon"))))
 
 (def chal-4-answer
-  (delay (find-most-english
-          (map (comp find-most-english xor-permute-strings) c4-data))))
+  (delay (decipher-single-XOR c4-data)))
 
 (deftest challenge-4
-  (is (= @chal-4-answer
+  (is (= (deref chal-4-answer)
          "Now that the party is jumping\n")))
 
 (deftest challenge-5
@@ -33,5 +32,5 @@
          "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f")))
 
 (deftest challenge-6
-  (is (= (hamming-distance "this is a test" "wokka wokka!!!")
+  (is (= (hamming "this is a test" "wokka wokka!!!")
          37)))
