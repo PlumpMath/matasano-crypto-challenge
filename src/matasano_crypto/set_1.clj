@@ -15,17 +15,18 @@
 
 ;; Challenge 2: Fixed XOR
 
-(defn inplace-xor [^bytes a ^bytes b ^bytes out]
-  (dotimes [i (alength a)]
-    (aset-byte out i
-               (bit-xor (aget a i) (aget b i)))))
+(defn byte-xor [^bytes a ^bytes b]
+  (let [out (byte-array (alength a))]
+    (dotimes [i (alength a)]
+      (aset-byte out i
+                 (bit-xor (aget a i) (aget b i))))
+    out))
 
 (defn hex-xor [a b]
   (let [a-bytes (Hex/decode a)
-        b-bytes (Hex/decode b)
-        out (byte-array (alength a-bytes))]
-    (inplace-xor a-bytes b-bytes out)
-    (Hex/encodeToString out)))
+        b-bytes (Hex/decode b)]
+    (-> (byte-xor a-bytes b-bytes)
+        Hex/encodeToString)))
 
 (CodecSupport/toString (Hex/decode "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d"))
 ;; => "I'm killing your brain like a poisonous mushroom"
@@ -39,10 +40,9 @@
   "Given a string of bytes and a single-byte mask, returns the xor result."
   [s mask]
   (let [s-bytes (Hex/decode s)
-        m-bytes (byte-array (alength s-bytes) mask)
-        out (byte-array (alength s-bytes))]
-    (inplace-xor s-bytes m-bytes out)
-    (CodecSupport/toString out)))
+        m-bytes (byte-array (alength s-bytes) mask)]
+    (-> (byte-xor s-bytes m-bytes)
+        CodecSupport/toString)))
 
 (defn etaoin-score
   "Given a char, returns its score indicating likelyhood of being part of an
@@ -102,5 +102,5 @@
                      (take len)
                      byte-array)
         out (byte-array len)]
-    (inplace-xor a-bytes k-bytes out)
-    (Hex/encodeToString out)))
+    (-> (byte-xor a-bytes k-bytes)
+        Hex/encodeToString)))
