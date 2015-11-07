@@ -88,9 +88,10 @@
 
 (def c4-data (import-lines-of-txt "resources/4.txt"))
 
-#_(find-most-english
-   (map (comp find-most-english xor-permute-strings) c4-data))
-
+(defn decipher-single-XOR [s]
+  (most-englishest
+   (map (comp most-englishest xor-permute-strings)
+        s)))
 
 ;; Challenge 5: Repeating-key XOR
 
