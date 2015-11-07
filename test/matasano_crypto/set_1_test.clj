@@ -17,11 +17,11 @@
   (let [input "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"]
     (is (= (single-byte-xor input (byte 88))
            "Cooking MC's like a pound of bacon"))
-    (is (= (most-englishest (xor-permute-strings input))
+    (is (= (englishest (xor-permutations input))
            "Cooking MC's like a pound of bacon"))))
 
 (def chal-4-answer
-  (delay (decipher-single-XOR c4-data)))
+  (delay (englishest (map (comp englishest xor-permutations) c4-data))))
 
 (deftest challenge-4
   (is (= (deref chal-4-answer)

@@ -48,27 +48,27 @@
   "Given a char, returns its score indicating likelyhood of being part of an
   English word."
   [c]
-  (let [weights {\e 16782 \a 12574 \i 11674 \r 11042 \t 10959
-                 \o 10466 \n 9413 \s 8154 \l 8114 \c 6968
-                 \u 5373 \p 4809 \m 4735 \d 4596 \h 4058
-                 \g 3380 \b 3121 \y 2938 \f 2157 \v 1574
-                 \w 1388 \k 1235 \x 507 \z 356 \q 343 \j 220
-                 \space 6000}]
+  (let [weights {\e 0.1202 \t 0.091 \a 0.0812 \o 0.0768 \i 0.0731
+                 \n 0.0695 \s 0.0628 \r 0.0602 \h 0.0592 \d 0.0432
+                 \l 0.0398 \u 0.0288 \c 0.0271 \m 0.0261 \f 0.023
+                 \y 0.0211 \w 0.0209 \g 0.0203 \p 0.0182 \b 0.0149
+                 \v 0.0111 \k 0.0069 \x 0.0017 \q 0.0011 \j 0.001
+                 \z 0.0007 \space 0.15}]
     (weights c)))
 
 (defn score-text
   "Takes a plaintext string, checks each char against a word frequencies map and
   returns the sum of its char scores."
   [s]
-  (reduce + (replace {nil -6000} (map etaoin-score s))))
+  (reduce + (replace {nil -0.1} (map etaoin-score s))))
 
-(defn xor-permute-strings
-  "Takes a string of bytes XOR'd against a single character. Returns all
-  permutations of this string XOR'd against a single byte."
+(defn xor-permutations
+  "Takes a string of bytes. Returns all permutations of this string XOR'd
+  against a single byte."
   [s]
   (for [i (range 128)] (single-byte-xor s (byte i))))
 
-(defn most-englishest
+(defn englishest
   "Takes a list of strings and returns the most English of them all."
   [v]
   (let [str-score-pairs (into {} (map-indexed (fn [_ x] [x (score-text x)]) v))
@@ -88,10 +88,6 @@
 
 (def c4-data (import-lines-of-txt "resources/4.txt"))
 
-(defn decipher-single-XOR [s]
-  (most-englishest
-   (map (comp most-englishest xor-permute-strings)
-        s)))
 
 ;; Challenge 5: Repeating-key XOR
 
@@ -114,7 +110,7 @@
 ;; Challenge 6: Break repeating key XOR
 
 (def c6 (import-lines-of-txt "resources/6.txt"))
-(def cipher-string (Base64/decodeToString (str/join c6)))
+(def cipher-string (Base64/decode (str/join c6)))
 
 (defn hamming
   "Given two strings, computes their bitwise hamming distance."
@@ -147,16 +143,16 @@
        4.0)))
 
 (def blocked-cipher (partition 4 cipher-string))
-(def transposed-ciphers (map (comp #(Hex/encodeToString %)
-                                   #(CodecSupport/toBytes %)
-                                   (partial apply str))
+(def transposed-ciphers (map (comp ;; #(Hex/encodeToString %)
+                              ;; vec
+                              ;; #(CodecSupport/toBytes %)
+                              (partial apply str))
                              [(map first blocked-cipher)
                               (map second blocked-cipher)
                               (map #(nth % 2) blocked-cipher)
                               (map last blocked-cipher)]))
 
-(map decipher-single-XOR transposed-ciphers)
-
+;; (englishest (xor-permutations (first transposed-ciphers)))
 
 (bit-xor 4 3)
 ;; => 7
