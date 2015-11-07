@@ -108,3 +108,37 @@
         out (byte-array len)]
     (-> (byte-xor a-bytes k-bytes)
         Hex/encodeToString)))
+
+
+;; Challenge 6: Break repeating key XOR
+
+(def file6 (import-lines-of-txt "resources/6.txt"))
+
+(defn hamming-distance
+  "Given two strings, computes their bitwise hamming distance."
+  [^String a ^String b]
+  (let [as (CodecSupport/toBytes a)
+        bs (CodecSupport/toBytes b)]
+    (->> (map bit-xor as bs)
+         (map #(Integer/bitCount %))    ; number of 1s in the byte
+         (reduce +))))
+
+(defn normalized-hamming [a b keysize]
+  (/ (hamming-distance a b)
+     keysize))
+
+(bit-xor 4 3)
+;; => 7
+(bit-xor 2r100 2r011)
+;; => 7
+(Integer/toBinaryString 7)
+;; => "111"
+(Integer/bitCount 7)
+;; => 3
+
+(Integer/toHexString 100)
+;; => "64"
+(Integer/toBinaryString 100)
+;; => "1100100"
+(Integer/bitCount 100)
+;; => 3
