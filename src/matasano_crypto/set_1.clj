@@ -35,11 +35,11 @@
 (def etaoin-shrdlu "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")
 
 (defn single-byte-xor
-  "Given a string of bytes and a single-byte mask, returns the xor result."
-  [s mask]
-  (let [s-bytes (decode-hex s)
-        m-bytes (byte-array (alength s-bytes) mask)]
-    (-> (byte-xor s-bytes m-bytes)
+  "Given a byte-array a single-byte mask, returns the
+  xor result."
+  [b-array mask]
+  (let [m-bytes (byte-array (alength b-array) mask)]
+    (-> (byte-xor b-array m-bytes)
         (StringUtils/newStringUtf8))))
 
 (defn etaoin-score
@@ -61,8 +61,8 @@
   (reduce + (replace {nil -0.1} (map etaoin-score s))))
 
 (defn xor-permutations
-  "Takes a string of bytes. Returns all permutations of this string XOR'd
-  against a single byte."
+  "Takes a string representing hex values. Returns all permutations of this
+  string XOR'd against a single byte."
   [s]
   (for [i (range 128)] (single-byte-xor s (byte i))))
 
@@ -78,6 +78,8 @@
 
 (def c4-data (str/split (slurp "resources/4.txt") #"\n"))
 
+(def chal-4-answer
+  (delay (englishest (map (comp englishest xor-permutations decode-hex) c4-data))))
 
 ;; Challenge 5: Repeating-key XOR
 
@@ -104,7 +106,7 @@
 
 (defn hamming
   "Given two strings, computes their bitwise hamming distance."
-  [^String a ^String b]
+  [a b]
   (let [as (StringUtils/getBytesUtf8 a)
         bs (StringUtils/getBytesUtf8 b)]
     (->> (map bit-xor as bs)
@@ -124,23 +126,20 @@
         e (take-chunk (drop (* 4 keysize) cipher-string))
         f (take-chunk (drop (* 5 keysize) cipher-string))
         g (take-chunk (drop (* 6 keysize) cipher-string))
-        h (take-chunk (drop (* 7 keysize) cipher-string))
-        ]
+        h (take-chunk (drop (* 7 keysize) cipher-string))]
     (/ (+ (normalized-hamming a b keysize)
           (normalized-hamming c d keysize)
           (normalized-hamming e f keysize)
           (normalized-hamming g h keysize))
        4.0)))
 
-(def blocked-cipher (partition 4 cipher-string))
-(def transposed-ciphers (map (comp ;; #(Hex/encodeToString %)
-                              ;; vec
-                              ;; #(CodecSupport/toBytes %)
-                              (partial apply str))
-                             [(map first blocked-cipher)
+(def blocked-cipher (partition 4 (str/join c6)))
+(def transposed-ciphers (->> [(map first blocked-cipher)
                               (map second blocked-cipher)
                               (map #(nth % 2) blocked-cipher)
-                              (map last blocked-cipher)]))
+                              (map last blocked-cipher)]
+                             (map #(apply str %))
+                             (map #(Base64/decodeBase64 %))))
 
 ;; (englishest (xor-permutations (first transposed-ciphers)))
 
