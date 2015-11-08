@@ -1,21 +1,22 @@
 (ns matasano-crypto.set-1
-  (:import [org.apache.shiro.codec Base64 CodecSupport Hex])
+  (:import [org.apache.commons.codec.binary Base64 Hex BinaryCodec StringUtils])
   (:require [clojure.string :as str]))
 
 ;; Challenge 1: hex to base64
 
-(defn hex->base64 [s]
-  (let [raw (Hex/decode s)]
-    (Base64/encodeToString raw)))
+(defn decode-hex [s]
+  (Hex/decodeHex (char-array s)))
 
-(defn base64->hex [s]
-  (let [raw (Base64/decode s)]
-    (Hex/encodeToString raw)))
+(defn hex->base64 [s]
+  (Base64/encodeBase64String (decode-hex s)))
 
 
 ;; Challenge 2: Fixed XOR
 
-(defn byte-xor [^bytes a ^bytes b]
+(defn byte-xor
+  "Take two arrays of bytes, bit-xors each corresponding byte and returns the
+  resulting byte-array"
+  [^bytes a ^bytes b]
   (let [out (byte-array (alength a))]
     (dotimes [i (alength a)]
       (aset-byte out i
@@ -23,13 +24,10 @@
     out))
 
 (defn hex-xor [a b]
-  (let [a-bytes (Hex/decode a)
-        b-bytes (Hex/decode b)]
+  (let [a-bytes (decode-hex a)
+        b-bytes (decode-hex b)]
     (-> (byte-xor a-bytes b-bytes)
-        Hex/encodeToString)))
-
-(CodecSupport/toString (Hex/decode "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d"))
-;; => "I'm killing your brain like a poisonous mushroom"
+        Hex/encodeHexString)))
 
 
 ;; Challenge 3: Single-byte XOR cipher
@@ -39,13 +37,13 @@
 (defn single-byte-xor
   "Given a string of bytes and a single-byte mask, returns the xor result."
   [s mask]
-  (let [s-bytes (Hex/decode s)
+  (let [s-bytes (decode-hex s)
         m-bytes (byte-array (alength s-bytes) mask)]
     (-> (byte-xor s-bytes m-bytes)
-        CodecSupport/toString)))
+        (StringUtils/newStringUtf8))))
 
 (defn etaoin-score
-  "Given a char, returns its score indicating likelyhood of being part of an
+  "Given a char, returns its score indicating likelyhood of comprising an
   English word."
   [c]
   (let [weights {\e 0.1202 \t 0.091 \a 0.0812 \o 0.0768 \i 0.0731
@@ -78,15 +76,7 @@
 
 ;; Challenge 4: Detect single-character XOR
 
-(defn import-lines-of-txt
-  [filepath]
-  (read-string
-   (-> (slurp filepath)
-       (str/trim-newline) ;; don't want final \n to be surrounded by \"
-       (str/replace #"\n" "\"\n \"")
-       (str/join ["[\"" "\"]"]))))
-
-(def c4-data (import-lines-of-txt "resources/4.txt"))
+(def c4-data (str/split (slurp "resources/4.txt") #"\n"))
 
 
 ;; Challenge 5: Repeating-key XOR
@@ -96,27 +86,27 @@
 
 (defn repeat-key-xor
   [a k]
-  (let [a-bytes (CodecSupport/toBytes a)
+  (let [a-bytes (StringUtils/getBytesUtf8 a)
         len (alength a-bytes)
-        k-bytes (->> (CodecSupport/toBytes k)
+        k-bytes (->> (StringUtils/getBytesUtf8 k)
                      cycle
                      (take len)
                      byte-array)
         out (byte-array len)]
     (-> (byte-xor a-bytes k-bytes)
-        Hex/encodeToString)))
+        Hex/encodeHexString)))
 
 
 ;; Challenge 6: Break repeating key XOR
 
-(def c6 (import-lines-of-txt "resources/6.txt"))
-(def cipher-string (Base64/decode (str/join c6)))
+(def c6 (str/split (slurp "resources/6.txt") #"\n"))
+(def cipher-string (Base64/decodeBase64 (str/join c6)))
 
 (defn hamming
   "Given two strings, computes their bitwise hamming distance."
   [^String a ^String b]
-  (let [as (CodecSupport/toBytes a)
-        bs (CodecSupport/toBytes b)]
+  (let [as (StringUtils/getBytesUtf8 a)
+        bs (StringUtils/getBytesUtf8 b)]
     (->> (map bit-xor as bs)
          (map #(Integer/bitCount %))    ; number of 1s in each byte
          (reduce +))))
