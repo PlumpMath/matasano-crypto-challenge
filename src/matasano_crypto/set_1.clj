@@ -81,10 +81,11 @@
 (def c4-data (str/split (slurp "resources/4.txt") #"\n"))
 
 (def chal-4-answer
-  (delay (englishest (->> c4-data
-                          (map decode-hex)
-                          (map (comp vals xor-permutations))
-                          (map englishest)))))
+  (delay
+   (englishest (->> c4-data
+                    (map decode-hex)
+                    (map (comp vals xor-permutations))
+                    (map englishest)))))
 
 ;; Challenge 5: Repeating-key XOR
 
@@ -165,3 +166,6 @@
 
 #_(StringUtils/newStringUtf8 (let [key (ffirst @challenge-6-keys)]
                                (repeat-key-xor cipher-bytes key)))
+
+
+;; Challenge 7: AES in ECB mode
