@@ -38,5 +38,5 @@
            37))
     (is (= (ffirst @challenge-6-keys)
            "Terminator X: Bring the noise"))
-    (is (= (decrypt-vigenere cipher-bytes)
+    (is (= (decrypt-vigenere cipher6)
            solution))))

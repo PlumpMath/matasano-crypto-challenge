@@ -1,5 +1,6 @@
 (ns matasano-crypto.set-1
   (:import [org.apache.commons.codec.binary Base64 Hex BinaryCodec StringUtils])
+  ;; http://commons.apache.org/proper/commons-codec/archives/1.10/apidocs/index.html
   (:require [clojure.string :as str]))
 
 ;; Challenge 1: hex to base64
@@ -100,9 +101,9 @@
 
 ;; Challenge 6: Break repeating key XOR
 
-(def c6 (str/split (slurp "resources/6.txt") #"\n"))
+(def file6 (str/split (slurp "resources/6.txt") #"\n"))
 
-(def cipher-bytes (Base64/decodeBase64 (str/join c6)))
+(def cipher6 (Base64/decodeBase64 (str/join file6)))
 
 (defn hamming
   "Given two byte-arrays, computes their bitwise hamming distance."
@@ -147,8 +148,8 @@
                       (sort-by val >))))))
 
 (def challenge-6-keys
-  (delay (for [keysize (guess-keysize cipher-bytes)]
-           [(StringUtils/newStringUtf8 (find-key cipher-bytes keysize)) keysize])
+  (delay (for [keysize (guess-keysize cipher6)]
+           [(StringUtils/newStringUtf8 (find-key cipher6 keysize)) keysize])
          ;; =>
          ;; (["Terminator X: Bring the noise" 29]
          ;;  ["ninin" 5]
@@ -163,9 +164,6 @@
              [(find-key cipher k) k])
         k (ffirst ks)]
     (StringUtils/newStringUtf8 (repeat-key-xor cipher k))))
-
-#_(StringUtils/newStringUtf8 (let [key (ffirst @challenge-6-keys)]
-                               (repeat-key-xor cipher-bytes key)))
 
 
 ;; Challenge 7: AES in ECB mode
