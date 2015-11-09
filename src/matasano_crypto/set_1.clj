@@ -61,10 +61,12 @@
   (reduce + (replace {nil -0.1} (map etaoin-score s))))
 
 (defn xor-permutations
-  "Takes a string representing hex values. Returns all permutations of this
-  string XOR'd against a single byte."
+  "Takes a byte-array. XOR this byte-array against key byte values in (range
+  128) and return a map of the key used and the result decoded to plaintext."
   [s]
-  (for [i (range 128)] (single-byte-xor s (byte i))))
+  (into {}
+        (for [i (range 128)]
+          [i (single-byte-xor s (byte i))])))
 
 (defn englishest
   "Takes a list of strings and returns the most English of them all."
@@ -79,69 +81,90 @@
 (def c4-data (str/split (slurp "resources/4.txt") #"\n"))
 
 (def chal-4-answer
-  (delay (englishest (map (comp englishest xor-permutations decode-hex) c4-data))))
+  (delay (englishest (->> c4-data
+                          (map decode-hex)
+                          (map (comp vals xor-permutations))
+                          (map englishest)))))
 
 ;; Challenge 5: Repeating-key XOR
 
-(def ice-ice-lyrics
-  "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal")
-
 (defn repeat-key-xor
   [a k]
-  (let [a-bytes (StringUtils/getBytesUtf8 a)
-        len (alength a-bytes)
+  (let [len (alength a)
         k-bytes (->> (StringUtils/getBytesUtf8 k)
                      cycle
                      (take len)
-                     byte-array)
-        out (byte-array len)]
-    (-> (byte-xor a-bytes k-bytes)
-        Hex/encodeHexString)))
+                     byte-array)]
+    (byte-xor a k-bytes)))
+
+(defn repeat-key-xor-hex-out
+  [a k]
+  (Hex/encodeHexString (repeat-key-xor a k)))
 
 
 ;; Challenge 6: Break repeating key XOR
 
 (def c6 (str/split (slurp "resources/6.txt") #"\n"))
-(def cipher-string (Base64/decodeBase64 (str/join c6)))
+
+(def cipher-bytes (Base64/decodeBase64 (str/join c6)))
 
 (defn hamming
-  "Given two strings, computes their bitwise hamming distance."
+  "Given two byte-arrays, computes their bitwise hamming distance."
   [a b]
-  (let [as (StringUtils/getBytesUtf8 a)
-        bs (StringUtils/getBytesUtf8 b)]
-    (->> (map bit-xor as bs)
-         (map #(Integer/bitCount %))    ; number of 1s in each byte
-         (reduce +))))
+  (->> (byte-xor a b)
+       (map #(Integer/bitCount %))      ; number of 1s in each byte
+       (reduce +)))
+
+(defn str-hamming [str1 str2]
+  (hamming (StringUtils/getBytesUtf8 str1)
+           (StringUtils/getBytesUtf8 str2)))
 
 (defn normalized-hamming [a b keysize]
   (/ (hamming a b)
      keysize))
 
-(for [keysize (range 2 40)]
-  (let [take-chunk (fn [s] (apply str (take keysize s)))
-        a (take-chunk cipher-string)
-        b (take-chunk (drop keysize cipher-string))
-        c (take-chunk (drop (* 2 keysize) cipher-string))
-        d (take-chunk (drop (* 3 keysize) cipher-string))
-        e (take-chunk (drop (* 4 keysize) cipher-string))
-        f (take-chunk (drop (* 5 keysize) cipher-string))
-        g (take-chunk (drop (* 6 keysize) cipher-string))
-        h (take-chunk (drop (* 7 keysize) cipher-string))]
-    (/ (+ (normalized-hamming a b keysize)
-          (normalized-hamming c d keysize)
-          (normalized-hamming e f keysize)
-          (normalized-hamming g h keysize))
-       4.0)))
+(defn- chunks [cipher keysize]
+  (map byte-array (partition keysize cipher)))
 
-(def blocked-cipher (partition 4 (str/join c6)))
-(def transposed-ciphers (->> [(map first blocked-cipher)
-                              (map second blocked-cipher)
-                              (map #(nth % 2) blocked-cipher)
-                              (map last blocked-cipher)]
-                             (map #(apply str %))
-                             (map #(Base64/decodeBase64 %))))
+(defn key-hamming-pairs
+  "Takes a cipher byte-array and returns a map of keysizes to the average
+  weighted hamming distances between chunks of keysize length."
+  [cipher]
+  (for [keysize (range 2 40)]
+    (let [chunks (take 12 (partition 2 1 (chunks cipher keysize)))
+          key-dist-pairs [keysize (map (partial apply hamming) chunks)]
+          normalize (fn [[l v]]
+                      [l (float (/ (reduce + v) (count v) l))])]
+      (normalize key-dist-pairs))))
 
-;; (englishest (xor-permutations (first transposed-ciphers)))
+(defn guess-keysize [cipher]
+  (keys (take 5 (sort-by val < (into {} (key-hamming-pairs cipher))))))
+
+(defn transpose-every-n [cipher n]
+  (for [i (range n)]
+    (byte-array (take-nth n (drop i cipher)))))
+
+(defn- find-key [cipher keysize]
+  (byte-array (map ffirst (for [block (transpose-every-n cipher keysize)]
+                            (->> block
+                                 xor-permutations
+                                 (map (fn [x] [(key x) (score-text (val x))]))
+                                 (into {})
+                                 (sort-by val >))))))
+
+(def challenge-6-keys
+  (delay (for [keysize (guess-keysize cipher-bytes)]
+           [(StringUtils/newStringUtf8 (find-key cipher-bytes keysize)) keysize])
+         ;; =>
+         ;; (["Terminator X: Bring the noise" 29]
+         ;;  ["ninin" 5]
+         ;;  ["noenniininnenii" 15]
+         ;;  ["nnntionniinoinrinrhninetnniieie" 31]
+         ;;  ["ni" 2])
+         ))
+
+(StringUtils/newStringUtf8 (let [key (ffirst @challenge-6-keys)]
+                             (repeat-key-xor cipher-bytes key)))
 
 (bit-xor 4 3)
 ;; => 7
