@@ -91,15 +91,10 @@
 (defn repeat-key-xor
   [a k]
   (let [len (alength a)
-        k-bytes (->> (StringUtils/getBytesUtf8 k)
-                     cycle
+        k-bytes (->> (cycle k)
                      (take len)
                      byte-array)]
     (byte-xor a k-bytes)))
-
-(defn repeat-key-xor-hex-out
-  [a k]
-  (Hex/encodeHexString (repeat-key-xor a k)))
 
 
 ;; Challenge 6: Break repeating key XOR
@@ -114,10 +109,6 @@
   (->> (byte-xor a b)
        (map #(Integer/bitCount %))      ; number of 1s in each byte
        (reduce +)))
-
-(defn str-hamming [str1 str2]
-  (hamming (StringUtils/getBytesUtf8 str1)
-           (StringUtils/getBytesUtf8 str2)))
 
 (defn normalized-hamming [a b keysize]
   (/ (hamming a b)
@@ -144,13 +135,15 @@
   (for [i (range n)]
     (byte-array (take-nth n (drop i cipher)))))
 
-(defn- find-key [cipher keysize]
-  (byte-array (map ffirst (for [block (transpose-every-n cipher keysize)]
-                            (->> block
-                                 xor-permutations
-                                 (map (fn [x] [(key x) (score-text (val x))]))
-                                 (into {})
-                                 (sort-by val >))))))
+(defn find-key
+  [cipher keysize]
+  (byte-array
+   (map ffirst (for [block (transpose-every-n cipher keysize)]
+                 (->> block
+                      xor-permutations
+                      (map (fn [x] [(key x) (score-text (val x))]))
+                      (into {})
+                      (sort-by val >))))))
 
 (def challenge-6-keys
   (delay (for [keysize (guess-keysize cipher-bytes)]
@@ -163,21 +156,12 @@
          ;;  ["ni" 2])
          ))
 
-(StringUtils/newStringUtf8 (let [key (ffirst @challenge-6-keys)]
-                             (repeat-key-xor cipher-bytes key)))
+(defn decrypt-vigenere
+  [cipher]
+  (let [ks (for [k (guess-keysize cipher)]
+             [(find-key cipher k) k])
+        k (ffirst ks)]
+    (StringUtils/newStringUtf8 (repeat-key-xor cipher k))))
 
-(bit-xor 4 3)
-;; => 7
-(bit-xor 2r100 2r011)
-;; => 7
-(Integer/toBinaryString 7)
-;; => "111"
-(Integer/bitCount 7)
-;; => 3
-
-(Integer/toHexString 100)
-;; => "64"
-(Integer/toBinaryString 100)
-;; => "1100100"
-(Integer/bitCount 100)
-;; => 3
+#_(StringUtils/newStringUtf8 (let [key (ffirst @challenge-6-keys)]
+                               (repeat-key-xor cipher-bytes key)))
