@@ -1,9 +1,15 @@
 (ns matasano-crypto.set-1
-  (:import [org.apache.commons.codec.binary Base64 Hex BinaryCodec StringUtils])
+  (:import [org.apache.commons.codec.binary Base64 Hex]
+           [javax.crypto.spec SecretKeySpec]
+           [javax.crypto Cipher KeyGenerator SecretKey]
+           [java.security SecureRandom])
   ;; http://commons.apache.org/proper/commons-codec/archives/1.10/apidocs/index.html
   (:require [clojure.string :as str]))
 
 ;; Challenge 1: hex to base64
+
+(defn get-bytes [s]
+  (.getBytes s "UTF-8"))
 
 (defn decode-hex [s]
   (Hex/decodeHex (char-array s)))
@@ -41,7 +47,7 @@
   [b-array mask]
   (let [m-bytes (byte-array (alength b-array) mask)]
     (-> (byte-xor b-array m-bytes)
-        (StringUtils/newStringUtf8))))
+        String.)))
 
 (defn etaoin-score
   "Given a char, returns its score indicating likelyhood of comprising an
@@ -103,7 +109,7 @@
 
 (def file6 (str/split (slurp "resources/6.txt") #"\n"))
 
-(def cipher6 (Base64/decodeBase64 (str/join file6)))
+(def cipher-bytes-6 (Base64/decodeBase64 (str/join file6)))
 
 (defn hamming
   "Given two byte-arrays, computes their bitwise hamming distance."
@@ -148,8 +154,8 @@
                       (sort-by val >))))))
 
 (def challenge-6-keys
-  (delay (for [keysize (guess-keysize cipher6)]
-           [(StringUtils/newStringUtf8 (find-key cipher6 keysize)) keysize])
+  (delay (for [keysize (guess-keysize cipher-bytes-6)]
+           [(String. (find-key cipher-bytes-6 keysize)) keysize])
          ;; =>
          ;; (["Terminator X: Bring the noise" 29]
          ;;  ["ninin" 5]
@@ -163,7 +169,26 @@
   (let [ks (for [k (guess-keysize cipher)]
              [(find-key cipher k) k])
         k (ffirst ks)]
-    (StringUtils/newStringUtf8 (repeat-key-xor cipher k))))
+    (String. (repeat-key-xor cipher k))))
 
 
 ;; Challenge 7: AES in ECB mode
+
+(def file7 (slurp "resources/7.txt"))
+
+(def key7 (get-bytes "YELLOW SUBMARINE"))
+
+(defn get-cipher [mode seed trans]
+  (let [key-spec (SecretKeySpec. (get-bytes seed) "AES")
+        cipher (Cipher/getInstance trans)]
+    (.init cipher mode key-spec)
+    cipher))
+
+(defn encrypt [text key trans]
+  (let [bytes (get-bytes text)
+        cipher (get-cipher Cipher/ENCRYPT_MODE key trans)]
+    (Base64/encodeBase64String (.doFinal cipher bytes))))
+
+(defn decrypt [text key trans]
+  (let [cipher (get-cipher Cipher/DECRYPT_MODE key trans)]
+    (String. (.doFinal cipher (Base64/decodeBase64 text)))))
