@@ -1,8 +1,7 @@
 (ns matasano-crypto.set-1
   (:import [org.apache.commons.codec.binary Base64 Hex]
            [javax.crypto.spec SecretKeySpec]
-           [javax.crypto Cipher KeyGenerator SecretKey]
-           [java.security SecureRandom])
+           [javax.crypto Cipher])
   ;; http://commons.apache.org/proper/commons-codec/archives/1.10/apidocs/index.html
   (:require [clojure.string :as str]))
 
@@ -85,7 +84,7 @@
 
 ;; Challenge 4: Detect single-character XOR
 
-(def c4-data (str/split (slurp "resources/4.txt") #"\n"))
+(def c4-data (str/split-lines (slurp "resources/4.txt")))
 
 (def chal-4-answer
   (delay
@@ -107,7 +106,7 @@
 
 ;; Challenge 6: Break repeating key XOR
 
-(def file6 (str/split (slurp "resources/6.txt") #"\n"))
+(def file6 (str/split-lines (slurp "resources/6.txt")))
 
 (def cipher-bytes-6 (Base64/decodeBase64 (str/join file6)))
 
@@ -122,8 +121,8 @@
   (/ (hamming a b)
      keysize))
 
-(defn- chunks [cipher keysize]
-  (map byte-array (partition keysize cipher)))
+(defn- chunks [cipher len]
+  (map byte-array (partition len cipher)))
 
 (defn key-hamming-pairs
   "Takes a cipher byte-array and returns a map of keysizes to the average
@@ -192,3 +191,16 @@
 (defn decrypt [text key trans]
   (let [cipher (get-cipher Cipher/DECRYPT_MODE key trans)]
     (String. (.doFinal cipher (Base64/decodeBase64 text)))))
+
+
+;; Challenge 8: Detect AES in ECB mode
+
+(def file8 (str/split-lines (slurp "resources/8.txt")))
+
+(def file8-b64 (map hex->base64 (str/split-lines (slurp "resources/8.txt"))))
+
+(defn detect-aes-ecb [b-array]
+  (let [chunks (chunks b-array 16)]
+    (- (count chunks) (count (set chunks)))))
+
+(map detect-aes-ecb file8)
