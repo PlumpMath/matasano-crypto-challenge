@@ -7,27 +7,38 @@
 
 ;;; Challenge 1: hex to base64
 
-(defn get-bytes [s]
+;; Remember, bytes are 8 bits (ex: 2r11010011), representing integers between 0
+;; and 255. So an array of bytes looks something like [73 39 109 32 107 105].
+
+(defn get-bytes
+  "Takes a UTF-8 string and returns a [B of the bytes representing each char."
+  [s]
   (.getBytes s "UTF-8"))
 
-(defn decode-hex [s]
+(defn decode-hex
+  "Takes a string representing a hexadecimal value, where each pair of chars is
+  the hex encoding of a character. Returns a [B where each byte is the value of
+  that hexadecimal (hex to byte conversion: 0x49 -> 73)."
+  [s]
   (Hex/decodeHex (char-array s)))
 
-(defn hex->base64 [s]
+(defn hex->base64
+  "Takes a hexadecimal string, decodes it into a [B, then returns that binary
+  data encoded with base64.
+
+  Hex pairs, such as 0x4d, are encoded in bytes. Base64 takes 6 bits at a time
+  and encodes them as one of 64 different characters (A-Z, a-z, 0-9, +, /)."
+  [s]
   (Base64/encodeBase64String (decode-hex s)))
 
 
 ;;; Challenge 2: Fixed XOR
 
 (defn byte-xor
-  "Take two arrays of bytes, bit-xors each corresponding byte and returns the
-  resulting byte-array"
-  [^bytes a ^bytes b]
-  (let [out (byte-array (alength a))]
-    (dotimes [i (alength a)]
-      (aset-byte out i
-                 (bit-xor (aget a i) (aget b i))))
-    out))
+  "Take two equal length arrays of bytes, bit-xors each corresponding byte and
+  returns the resulting byte-array"
+  [a b]
+  (byte-array (map bit-xor a b)))
 
 (defn hex-xor [a b]
   (let [a-bytes (decode-hex a)
@@ -41,8 +52,7 @@
 (def etaoin-shrdlu "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")
 
 (defn single-byte-xor
-  "Given a byte-array a single-byte mask, returns the
-  xor result."
+  "Given a byte-array a single-byte mask, returns the xor result."
   [b-array mask]
   (let [m-bytes (byte-array (alength b-array) mask)]
     (-> (byte-xor b-array m-bytes)
