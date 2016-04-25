@@ -1,11 +1,11 @@
 (ns matasano-crypto.set-1
   (:import [org.apache.commons.codec.binary Base64 Hex]
-           [javax.crypto.spec SecretKeySpec]
-           [javax.crypto Cipher])
+           javax.crypto.spec.SecretKeySpec
+           javax.crypto.Cipher)
   ;; http://commons.apache.org/proper/commons-codec/archives/1.10/apidocs/index.html
   (:require [clojure.string :as str]))
 
-;; Challenge 1: hex to base64
+;;; Challenge 1: hex to base64
 
 (defn get-bytes [s]
   (.getBytes s "UTF-8"))
@@ -17,7 +17,7 @@
   (Base64/encodeBase64String (decode-hex s)))
 
 
-;; Challenge 2: Fixed XOR
+;;; Challenge 2: Fixed XOR
 
 (defn byte-xor
   "Take two arrays of bytes, bit-xors each corresponding byte and returns the
@@ -36,7 +36,7 @@
         Hex/encodeHexString)))
 
 
-;; Challenge 3: Single-byte XOR cipher
+;;; Challenge 3: Single-byte XOR cipher
 
 (def etaoin-shrdlu "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")
 
@@ -82,7 +82,7 @@
     (-> sorted first key)))
 
 
-;; Challenge 4: Detect single-character XOR
+;;; Challenge 4: Detect single-character XOR
 
 (def c4-data (str/split-lines (slurp "resources/4.txt")))
 
@@ -93,7 +93,7 @@
                     (map (comp vals xor-permutations))
                     (map englishest)))))
 
-;; Challenge 5: Repeating-key XOR
+;;; Challenge 5: Repeating-key XOR
 
 (defn repeat-key-xor
   [a k]
@@ -104,7 +104,7 @@
     (byte-xor a k-bytes)))
 
 
-;; Challenge 6: Break repeating key XOR
+;;; Challenge 6: Break repeating key XOR
 
 (def file6 (str/split-lines (slurp "resources/6.txt")))
 
@@ -171,7 +171,7 @@
     (String. (repeat-key-xor cipher k))))
 
 
-;; Challenge 7: AES in ECB mode
+;;; Challenge 7: AES in ECB mode
 
 (def file7 (slurp "resources/7.txt"))
 
@@ -193,7 +193,7 @@
     (String. (.doFinal cipher (Base64/decodeBase64 text)))))
 
 
-;; Challenge 8: Detect AES in ECB mode
+;;; Challenge 8: Detect AES in ECB mode
 
 (def file8 (str/split-lines (slurp "resources/8.txt")))
 
@@ -203,4 +203,6 @@
   (let [chunks (chunks b-array 16)]
     (- (count chunks) (count (set chunks)))))
 
-(map detect-aes-ecb file8)
+(->> file8
+     (map get-bytes)
+     (map detect-aes-ecb))
