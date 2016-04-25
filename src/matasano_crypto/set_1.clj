@@ -40,7 +40,10 @@
   [a b]
   (byte-array (map bit-xor a b)))
 
-(defn hex-xor [a b]
+(defn hex-xor
+  "Decodes two hex strings and x-or's them against each other, returning the
+  resulting byte-array."
+  [a b]
   (let [a-bytes (decode-hex a)
         b-bytes (decode-hex b)]
     (-> (byte-xor a-bytes b-bytes)
@@ -52,56 +55,54 @@
 (def etaoin-shrdlu "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")
 
 (defn single-byte-xor
-  "Given a byte-array a single-byte mask, returns the xor result."
-  [b-array mask]
-  (let [m-bytes (byte-array (alength b-array) mask)]
-    (-> (byte-xor b-array m-bytes)
-        String.)))
+  "Given a byte-array a single-byte mask, returns the XOR result."
+  [b-array byte]
+  (let [mask (byte-array (count b-array) byte)]
+    (byte-xor b-array mask)))
 
-(defn etaoin-score
-  "Given a char, returns its score indicating likelyhood of comprising an
-  English word."
-  [c]
-  (let [weights {\e 0.1202 \t 0.091 \a 0.0812 \o 0.0768 \i 0.0731
-                 \n 0.0695 \s 0.0628 \r 0.0602 \h 0.0592 \d 0.0432
-                 \l 0.0398 \u 0.0288 \c 0.0271 \m 0.0261 \f 0.023
-                 \y 0.0211 \w 0.0209 \g 0.0203 \p 0.0182 \b 0.0149
-                 \v 0.0111 \k 0.0069 \x 0.0017 \q 0.0011 \j 0.001
-                 \z 0.0007 \space 0.15}]
-    (weights c)))
+(def etaoin-score {\e 0.1202 \t 0.091 \a 0.0812 \o 0.0768 \i 0.0731
+                   \n 0.0695 \s 0.0628 \r 0.0602 \h 0.0592 \d 0.0432
+                   \l 0.0398 \u 0.0288 \c 0.0271 \m 0.0261 \f 0.023
+                   \y 0.0211 \w 0.0209 \g 0.0203 \p 0.0182 \b 0.0149
+                   \v 0.0111 \k 0.0069 \x 0.0017 \q 0.0011 \j 0.001
+                   \z 0.0007 \space 0.15})
 
 (defn score-text
-  "Takes a plaintext string, checks each char against a word frequencies map and
-  returns the sum of its char scores."
+  "Takes a plaintext string, checks each char against a letter frequency map and
+  returns the sum of its scores."
   [s]
-  (reduce + (replace {nil -0.1} (map etaoin-score s))))
+  (reduce + (replace {nil -0.01} (map etaoin-score s))))
 
 (defn xor-permutations
-  "Takes a byte-array. XOR this byte-array against key byte values in (range
-  128) and return a map of the key used and the result decoded to plaintext."
+  "Takes a byte-array. XOR this byte-array against all single-byte masks, and
+  return a map from the mask byte to the result as a string"
   [s]
-  (into {}
-        (for [i (range 128)]
-          [i (single-byte-xor s (byte i))])))
+  (into {} (for [i (range 128)]
+             [i (String. (single-byte-xor s (byte i)))])))
 
-(defn englishest
-  "Takes a list of strings and returns the most English of them all."
-  [v]
-  (let [str-score-pairs (into {} (map-indexed (fn [_ x] [x (score-text x)]) v))
-        sorted (sort-by val > str-score-pairs)]
-    (-> sorted first key)))
+(defn most-english
+  "Takes a map of masks to strings and returns the most english of them all."
+  [m]
+  (apply max-key (fn [[k v]] (score-text v)) m))
+
+(defn single-byte-xor-cipher [s]
+  (val (most-english (xor-permutations (decode-hex s)))))
 
 
 ;;; Challenge 4: Detect single-character XOR
 
 (def c4-data (str/split-lines (slurp "resources/4.txt")))
 
-(def chal-4-answer
-  (delay
-   (englishest (->> c4-data
-                    (map decode-hex)
-                    (map (comp vals xor-permutations))
-                    (map englishest)))))
+(defn detect-single-byte-xor
+  "Takes a vector of strings, one of which has been encrypted with single-byte
+  xor. Returns the decrypted message."
+  [strings]
+  (->> strings
+       (map decode-hex)
+       (map xor-permutations)
+       (map most-english)
+       most-english
+       val))
 
 ;;; Challenge 5: Repeating-key XOR
 
@@ -213,6 +214,6 @@
   (let [chunks (chunks b-array 16)]
     (- (count chunks) (count (set chunks)))))
 
-(->> file8
+#_(->> file8
      (map get-bytes)
      (map detect-aes-ecb))

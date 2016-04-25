@@ -16,14 +16,14 @@
            "746865206b696420646f6e277420706c6179"))))
 
 (deftest challenge-3
-  (let [input "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"]
-    (is (= (single-byte-xor (decode-hex input) (byte 88))
-           "Cooking MC's like a pound of bacon"))
-    (is (= (englishest (vals (xor-permutations (decode-hex input))))
+  (let [hex-string "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"]
+    (is (= (vec (single-byte-xor (decode-hex hex-string) (byte 88)))
+           [67 111 111 107 105 110 103 32 77 67 39 115 32 108 105 107 101 32 97 32 112 111 117 110 100 32 111 102 32 98 97 99 111 110]))
+    (is (= (single-byte-xor-cipher hex-string)
            "Cooking MC's like a pound of bacon"))))
 
 (deftest challenge-4
-  (is (= (deref chal-4-answer)
+  (is (= (detect-single-byte-xor c4-data)
          "Now that the party is jumping\n")))
 
 (deftest challenge-5
