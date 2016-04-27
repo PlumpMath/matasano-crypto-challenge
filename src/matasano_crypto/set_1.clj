@@ -80,39 +80,38 @@
   (into {} (for [i (range 128)]
              [i (String. (single-byte-xor s (byte i)))])))
 
-(defn most-english
-  "Takes a map of masks to strings and returns the most english of them all."
+(defn most-english-kv
+  "Takes a map of masks to strings and returns the kv pair whose v is the most
+  english."
   [m]
   (apply max-key (fn [[k v]] (score-text v)) m))
 
 (defn single-byte-xor-cipher [s]
-  (val (most-english (xor-permutations (decode-hex s)))))
+  (val (most-english-kv (xor-permutations (decode-hex s)))))
 
 
 ;;; Challenge 4: Detect single-character XOR
 
 (def c4-data (str/split-lines (slurp "resources/4.txt")))
 
-(defn detect-single-byte-xor
+(defn decrypt-single-byte-xor
   "Takes a vector of strings, one of which has been encrypted with single-byte
   xor. Returns the decrypted message."
   [strings]
   (->> strings
        (map decode-hex)
        (map xor-permutations)
-       (map most-english)
-       most-english
+       (map most-english-kv)
+       most-english-kv
        val))
+
 
 ;;; Challenge 5: Repeating-key XOR
 
-(defn repeat-key-xor
-  [a k]
-  (let [len (alength a)
-        k-bytes (->> (cycle k)
-                     (take len)
-                     byte-array)]
-    (byte-xor a k-bytes)))
+(defn repeating-key-xor
+  [plain-text-bytes key-bytes]
+  (let [mask (byte-array (count plain-text-bytes) (cycle key-bytes))]
+    (byte-xor plain-text-bytes mask)))
 
 
 ;;; Challenge 6: Break repeating key XOR
@@ -121,65 +120,51 @@
 
 (def cipher-bytes-6 (Base64/decodeBase64 (str/join file6)))
 
-(defn hamming
+(defn- hamming-distance
   "Given two byte-arrays, computes their bitwise hamming distance."
   [a b]
   (->> (byte-xor a b)
        (map #(Integer/bitCount %))      ; number of 1s in each byte
        (reduce +)))
 
-(defn normalized-hamming [a b keysize]
-  (/ (hamming a b)
-     keysize))
-
-(defn- chunks [cipher len]
-  (map byte-array (partition len cipher)))
-
-(defn key-hamming-pairs
-  "Takes a cipher byte-array and returns a map of keysizes to the average
-  weighted hamming distances between chunks of keysize length."
+(defn- map-keysize->distance
+  "Takes a cipher byte-array and returns a map of guessed keysizes to the
+  average weighted hamming distances between cipher chunks of that size."
   [cipher]
-  (for [keysize (range 2 40)]
-    (let [chunks (take 12 (partition 2 1 (chunks cipher keysize)))
-          key-dist-pairs [keysize (map (partial apply hamming) chunks)]
-          normalize (fn [[l v]]
-                      [l (float (/ (reduce + v) (count v) l))])]
-      (normalize key-dist-pairs))))
+  (into {} (for [keysize (range 2 40)]
+             (let [chunk-pairs (partition 2 1 (take 13 (partition keysize cipher)))
+                   normalized-distance (/ (reduce + (map
+                                                     #(apply hamming-distance %)
+                                                     chunk-pairs))
+                                          keysize)]
+               [keysize normalized-distance]))))
 
-(defn guess-keysize [cipher]
-  (keys (take 5 (sort-by val < (into {} (key-hamming-pairs cipher))))))
+(defn guess-keysize
+  [cipher]
+  (key (first (sort-by val < (map-keysize->distance cipher)))))
 
-(defn transpose-every-n [cipher n]
+(defn- transpose-nth
+  [n cipher]
   (for [i (range n)]
-    (byte-array (take-nth n (drop i cipher)))))
+    (take-nth n (drop i cipher))))
 
 (defn find-key
+  "Divides the cipher text into keysize number of blocks, where each block
+  corresponds to the same byte of the key. These blocks are solved as single
+  byte XORs, the solutions to which can be combined for the cipher text's key."
   [cipher keysize]
   (byte-array
-   (map ffirst (for [block (transpose-every-n cipher keysize)]
-                 (->> block
-                      xor-permutations
-                      (map (fn [x] [(key x) (score-text (val x))]))
-                      (into {})
-                      (sort-by val >))))))
-
-(def challenge-6-keys
-  (delay (for [keysize (guess-keysize cipher-bytes-6)]
-           [(String. (find-key cipher-bytes-6 keysize)) keysize])
-         ;; =>
-         ;; (["Terminator X: Bring the noise" 29]
-         ;;  ["ninin" 5]
-         ;;  ["noenniininnenii" 15]
-         ;;  ["nnntionniinoinrinrhninetnniieie" 31]
-         ;;  ["ni" 2])
-         ))
+   (for [block (transpose-nth keysize cipher)]
+     (->> block
+          xor-permutations
+          most-english-kv
+          key))))
 
 (defn decrypt-vigenere
   [cipher]
-  (let [ks (for [k (guess-keysize cipher)]
-             [(find-key cipher k) k])
-        k (ffirst ks)]
-    (String. (repeat-key-xor cipher k))))
+  (let [keysize (guess-keysize cipher)
+        k (find-key cipher keysize)]
+    (String. (repeating-key-xor cipher k))))
 
 
 ;;; Challenge 7: AES in ECB mode
