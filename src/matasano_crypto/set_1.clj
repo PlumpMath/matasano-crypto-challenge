@@ -3,14 +3,15 @@
            javax.crypto.spec.SecretKeySpec
            javax.crypto.Cipher)
   ;; http://commons.apache.org/proper/commons-codec/archives/1.10/apidocs/index.html
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [matasano-crypto.set-2 :refer [pkcs7-pad]]))
 
 ;;; Challenge 1: hex to base64
 
 ;; Remember, bytes are 8 bits (ex: 2r11010011), representing integers between 0
 ;; and 255. So an array of bytes looks something like [73 39 109 32 107 105].
 
-(defn get-bytes
+(defn ->bytes
   "Takes a UTF-8 string and returns a [B of the bytes representing each char."
   [s]
   (.getBytes s "UTF-8"))
@@ -18,7 +19,7 @@
 (defn decode-hex
   "Takes a string representing a hexadecimal value, where each pair of chars is
   the hex encoding of a character. Returns a [B where each byte is the value of
-  that hexadecimal (hex to byte conversion: 0x49 -> 73)."
+  that hexadecimal (hex to byte conversion: 0xff -> 255)."
   [s]
   (Hex/decodeHex (char-array s)))
 
@@ -34,7 +35,7 @@
 
 ;;; Challenge 2: Fixed XOR
 
-(defn byte-xor
+(defn xor
   "Take two equal length arrays of bytes, bit-xors each corresponding byte and
   returns the resulting byte-array"
   [a b]
@@ -46,7 +47,7 @@
   [a b]
   (let [a-bytes (decode-hex a)
         b-bytes (decode-hex b)]
-    (-> (byte-xor a-bytes b-bytes)
+    (-> (xor a-bytes b-bytes)
         Hex/encodeHexString)))
 
 
@@ -58,7 +59,7 @@
   "Given a byte-array a single-byte mask, returns the XOR result."
   [b-array byte]
   (let [mask (byte-array (count b-array) byte)]
-    (byte-xor b-array mask)))
+    (xor b-array mask)))
 
 (def etaoin-score {\e 0.1202 \t 0.091 \a 0.0812 \o 0.0768 \i 0.0731
                    \n 0.0695 \s 0.0628 \r 0.0602 \h 0.0592 \d 0.0432
@@ -111,7 +112,7 @@
 (defn repeating-key-xor
   [plain-text-bytes key-bytes]
   (let [mask (byte-array (count plain-text-bytes) (cycle key-bytes))]
-    (byte-xor plain-text-bytes mask)))
+    (xor plain-text-bytes mask)))
 
 
 ;;; Challenge 6: Break repeating key XOR
@@ -120,10 +121,10 @@
 
 (def cipher-bytes-6 (Base64/decodeBase64 (str/join file6)))
 
-(defn- hamming-distance
+(defn hamming-distance
   "Given two byte-arrays, computes their bitwise hamming distance."
   [a b]
-  (->> (byte-xor a b)
+  (->> (xor a b)
        (map #(Integer/bitCount %))      ; number of 1s in each byte
        (reduce +)))
 
@@ -171,34 +172,35 @@
 
 (def file7 (slurp "resources/7.txt"))
 
-(def key7 (get-bytes "YELLOW SUBMARINE"))
-
-(defn get-cipher [mode seed trans]
-  (let [key-spec (SecretKeySpec. (get-bytes seed) "AES")
-        cipher (Cipher/getInstance trans)]
+(defn aes-ecb-cipher [mode key]
+  (let [key-spec (SecretKeySpec. key "AES")
+        cipher (Cipher/getInstance "AES/ECB/NoPadding")]
     (.init cipher mode key-spec)
     cipher))
 
-(defn encrypt [text key trans]
-  (let [bytes (get-bytes text)
-        cipher (get-cipher Cipher/ENCRYPT_MODE key trans)]
-    (Base64/encodeBase64String (.doFinal cipher bytes))))
+(defn encrypt-aes [bytes key]
+  (let [cipher (aes-ecb-cipher Cipher/ENCRYPT_MODE key)
+        padded (pkcs7-pad bytes (count key))]
+    (.doFinal cipher padded)))
 
-(defn decrypt [text key trans]
-  (let [cipher (get-cipher Cipher/DECRYPT_MODE key trans)]
-    (String. (.doFinal cipher (Base64/decodeBase64 text)))))
+(defn decrypt-aes [bytes key]
+  (let [cipher (aes-ecb-cipher Cipher/DECRYPT_MODE key)
+        padded (pkcs7-pad bytes (count key))]
+    (.doFinal cipher padded)))
 
 
 ;;; Challenge 8: Detect AES in ECB mode
 
 (def file8 (str/split-lines (slurp "resources/8.txt")))
 
-(def file8-b64 (map hex->base64 (str/split-lines (slurp "resources/8.txt"))))
+(def file8-ciphers (map ->bytes file8))
 
-(defn detect-aes-ecb [b-array]
-  (let [chunks (chunks b-array 16)]
-    (- (count chunks) (count (set chunks)))))
+(defn has-duplicate-block? [cipher]
+  (->> (for [i (range 8 33)]
+         (apply distinct? (partition i cipher)))
+       (some false?)))
 
-#_(->> file8
-     (map get-bytes)
-     (map detect-aes-ecb))
+(defn detect-aes-ecb [ciphers]
+  (keep-indexed (fn [idx cipher]
+                  (when (has-duplicate-block? cipher) [idx cipher]))
+                ciphers))
